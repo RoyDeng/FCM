@@ -1,0 +1,70 @@
+version: "3.8"
+
+services:
+  service:
+    restart: always
+    build: ./service
+    environment:
+      - TZ=Asia/Taipei
+      - API_PORT=3000
+      - AMQP_URL=amqp://fcm_rabbitmq:5672
+      - AMQP_CONSUMER_PREFETCH=20
+      - MYSQL_DATABASE=fcm
+      - MYSQL_URL=fcm_mysql
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - FCM_KEY=${FCM_KEY}
+    ports:
+      - 3000:3000
+    container_name: fcm_service
+    command: bash -c 'node api & node worker'
+    tty: true
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+    networks:
+      - fcm
+    depends_on:
+      - mysql
+      - rabbitmq
+
+  mysql:
+    image: mysql:8.0.30
+    hostname: fcm_mysql
+    container_name: fcm_mysql
+    environment:
+      - TZ=Asia/Taipei      
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=fcm
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    ports:
+      - 3306:3306
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+    restart: always
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    networks:
+      - fcm
+
+  rabbitmq:
+    image: rabbitmq:3.9.22-management-alpine
+    hostname: fcm_rabbitmq
+    container_name: fcm_rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER}      
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+        - fcm
+
+networks:
+  fcm:
+    external: true
